@@ -43,14 +43,20 @@ public:
 
 private:
 	Node<T>* find(std::size_t position);
+	void insert_between(Node<T> *first, Node<T> *second, const T& value);
+	void remove_inner(Node<T> *first, Node<T> *second, Node<T> *third);
 
 	std::size_t			mSize;
-	Node<T>*			mHead;
-	Node<T>*			mTail;
+	Node<T>*			mHeadSentinel;
+	Node<T>*			mTailSentinel;
 };
 
 template <typename T>
-NodeList<T>::NodeList() : mSize(0), mHead(nullptr), mTail(nullptr) {}
+NodeList<T>::NodeList() : mSize(0), mHeadSentinel(new Node<T>()), mTailSentinel(new Node<T>())
+{
+	mHeadSentinel->mNext = mTailSentinel;
+	mTailSentinel->mPrev = mHeadSentinel;
+}
 
 template <typename T>
 std::size_t NodeList<T>::size() const
@@ -67,137 +73,106 @@ bool NodeList<T>::empty() const
 template <typename T>
 void NodeList<T>::insert(std::size_t position, const T& value)
 {
-	if(position == 0)	  return push_front(value); //delagation to avoid issues with the head pointer
-	if(position == mSize) return push_back(value);  //delegation to avoid issues with the tail pointer
-
 	Node<T> *location = find(position);
-	Node<T> *temp = new Node<T>(value, location, location->mPrev);
-	temp->mNext->mPrev = temp;
-	temp->mPrev->mNext = temp;
+
+	insert_between(location->mPrev, location, value);
 	++mSize;
 }
 
 template <typename T>
 void NodeList<T>::erase(std::size_t position)
 {
-	//if(empty()) throw std::length_error("tried to erase an element in an empty NodeList");
-
-	if(position == 0)		   return pop_front();
-	if(position == mSize - 1)  return pop_back();
-
 	Node<T> *location = find(position);
 
-	location->mNext->mPrev = location->mPrev;
-	location->mPrev->mNext = location->mNext;
+	remove_inner(location->mPrev, location, location->mNext);
 	--mSize;
 }
 
 template <typename T>
 void NodeList<T>::push_front(const T& value)
 {
-	if(mSize > 0)
-	{
-		Node<T>* temp = new Node<T>(value, mHead, nullptr);
-		mHead->mPrev = temp;
-
-		mHead = temp;
-		++mSize;
-		return;
-	}
-
-	mHead = mTail = new Node<T>(value, nullptr, nullptr);
+	insert_between(mHeadSentinel, mHeadSentinel->mNext, value);
 	++mSize;
 }
 
 template <typename T>
 void NodeList<T>::push_back(const T& value)
 {
-	if(mSize > 0)
-	{
-		Node<T>* temp = new Node<T>(value, nullptr, mTail);
-		mTail->mNext = temp;
-
-		mTail = temp;
-		++mSize;
-		return;
-	}
-
-	mTail = mHead = new Node<T>(value, nullptr, nullptr);
+	insert_between(mTailSentinel->mPrev, mTailSentinel, value);
 	++mSize;
 }
 
 template <typename T>
 void NodeList<T>::pop_front()
 {
-	//I think the standard doesn't require range checking for user-proofing
-	//if(empty()) throw std::lengtherror("tried to erase an element in an empty NodeList");
-
-	if(mSize > 1)
-	{
-		Node<T> *temp = mHead;
-		mHead = mHead->mNext;
-		mHead->mPrev = nullptr;
-		delete temp;
-		--mSize;
-		return;
-	}
-
-	delete mHead;
-	mHead = mTail = nullptr;
+	remove_inner(mHeadSentinel, mHeadSentinel->mNext, mHeadSentinel->mNext->mNext);
 	--mSize;
 }
 
 template <typename T>
 void NodeList<T>::pop_back()
 {
-	//I think the standard doesn't require range checking for user-proofing
-	//if(empty()) throw std::lengtherror("tried to erase an element in an empty NodeList");
-
-	if(mSize > 1)
-	{
-		Node<T>* temp = mTail;
-		mTail = mTail->mPrev;
-		mTail->mNext = nullptr;
-		delete temp;
-		--mSize;
-		return;
-	}
-
-	delete mTail;
-	mTail = mHead = nullptr;
+	remove_inner(mTailSentinel->mPrev->mPrev, mTailSentinel->mPrev, mTailSentinel);
 	--mSize;
 }
 
 template <typename T>
 T& NodeList<T>::front()
 {
-	return mHead->mData;
+	return mHeadSentinel->mNext->mData;
 }
 
 template <typename T>
 T& NodeList<T>::back()
 {
-	return mTail->mData;
+	return mTailSentinel->mPrev->mData;
+}
+
+template <typename T>
+T& NodeList<T>::at(std::size_t position)
+{
+	Node<T> *location = find(position);
+	return location->mData;
+}
+
+template <typename T>
+T& NodeList<T>::operator[](std::size_t position)
+{
+	return at(position);
 }
 
 template <typename T>
 Node<T>* NodeList<T>::find(std::size_t position)
 {
-	if(position == 0)		  return mHead;
-	if(position == mSize - 1) return mTail;
-
-	Node<T> *temp = nullptr; //I leave optimization to the compiler
+	Node<T> *temp = nullptr;
 
 	if(position <= mSize/2)
 	{
-		temp = mHead->mNext;
-		while(--position) temp = temp->mNext;
-		return temp;
+		temp = mHeadSentinel;
+		while(position--) temp = temp->mNext;
+		return temp->mNext;
 	}
 
 	position = (mSize - 1) - position; //zero if position was last element, 1 for second to last, 2, for third to last, etc
 	
-	temp = mTail->mPrev;
-	while(--position) temp = temp->mPrev;
-	return temp;
+	temp = mTailSentinel;
+	while(position--) temp = temp->mPrev;
+	return temp->mPrev;
+}
+
+template <typename T>
+void NodeList<T>::insert_between(Node<T> *first, Node<T> *second, const T& value)
+{
+	Node<T> *temp = new Node<T>(value, second, first);
+
+	first->mNext = second->mPrev = temp;
+}
+
+template <typename T>
+void NodeList<T>::remove_inner(Node<T> *first, Node<T> *second, Node<T> *third)
+{
+	delete second;
+
+	first->mNext = third;
+	third->mPrev = first;
 }

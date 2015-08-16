@@ -18,6 +18,12 @@ int main(int argc, char *argv[])
 	dll.insert(2, 8);
 	dll.insert(5, 9);
 	dll.insert(3, 10);
+
+	for(int i = 0; i < 10; ++i)
+	{
+		std::cout << dll.at(i) << ':' << dll[i] << std::endl;
+	}
+
 	for(int i = 0; i < 10; ++i)
 	{
 		std::cout << dll.front() << std::endl;

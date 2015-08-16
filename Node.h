@@ -13,7 +13,7 @@ public:
 };
 
 template <typename T>
-Node<T>::Node() : mData(nullptr), mNext(nullptr), mPrev(nullptr) {}
+Node<T>::Node() : mData(), mNext(nullptr), mPrev(nullptr) {}
 
 template <typename T>
 Node<T>::Node(const T& data, Node *next, Node *prev) : mData(data), mNext(next), mPrev(prev) {}
